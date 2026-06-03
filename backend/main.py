@@ -1,19 +1,35 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+import models, schemas
+from database import engine, SessionLocal
+
 app = FastAPI()
-new_tarea = []
-class Tarea(BaseModel):
-    titulo: str
-    estado: str
-@app.post("/tareas")
-def crear_tarea(datos: Tarea):
-    nueva = {
-        "id": len(new_tarea) + 1,
-        "titulo": datos.titulo,     
-        "estado": datos.estado  
-    }
-    new_tarea.append(nueva)
-    return nueva
+models.Base.metadata.create_all(bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 @app.get("/tareas")
-def retornar_tareas():
-    return new_tarea
+def mostrarTarea(db: Session = Depends(get_db)):
+    mostrarTarea = db.query(models.Tarea).all()
+    return mostrarTarea
+
+@app.post("/tareas")
+def crearTarea(tarea: schemas.CrearTarea, db: Session = Depends(get_db)):
+    nueva_tarea = models.Tarea(
+    nombre_tarea = tarea.nombre_tarea,
+    descripcion = tarea.descripcion,
+    fecha_inicio = tarea.fecha_inicio,
+    hora_inicio = tarea.hora_inicio,
+    fecha_fin = tarea.fecha_fin,
+    hora_fin = tarea.hora_fin,
+    estado = tarea.estado
+    )
+    db.add(nueva_tarea)
+    db.commit()
+    db.refresh(nueva_tarea)
+    return nueva_tarea
